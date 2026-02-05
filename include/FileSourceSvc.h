@@ -28,7 +28,7 @@ public:
 
 protected:
     void handle(const Incident& incident) override {}
-    uint32 readUint32();
+    std::vector<uint32> readUint32(unsigned int n_word);
 
     Gaudi::Property<std::vector<std::string>> infiles { this, "inputFiles", {}, "List of data files" };
 
