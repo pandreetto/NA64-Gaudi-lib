@@ -17,6 +17,7 @@ class GAUDI_API DAQEvent : public DataObject
 public:
     static const uint32 SUPER_EVENT_MASK = 1u<<31;
     static const uint32 ATTR_SUPER_EVENT = 68;
+    static const uint32 EVENT_MAGIC_NUMBER = 0xDA1E5AFE;
 
     bool operator == (DAQEvent& evn) const;
 

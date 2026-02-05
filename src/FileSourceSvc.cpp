@@ -91,6 +91,17 @@ std::optional<DAQEvent> FileSourceSvc::next()
             
             event.set_time(wbuf2[12], 0);
         }
+
+        if (event.get_magic() != DAQEvent::EVENT_MAGIC_NUMBER)
+        {
+            error() << "Magic number was not found" << endmsg;
+            return std::nullopt;
+        }
+        if ((event.get_size() % 4) != 0 or event.get_size() < event.get_headLen())
+        {
+            error() << "Bad event length" << endmsg;
+            return std::nullopt;
+        }
     }
     catch (std::runtime_error exc)
     {
