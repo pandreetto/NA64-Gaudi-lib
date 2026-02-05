@@ -20,6 +20,7 @@ StatusCode FileSourceSvc::initialize()
 
     currInput = infiles.begin();
     in_stream = nullptr;
+    evn_counter = 0;
 
     return StatusCode::SUCCESS;
 }
@@ -35,6 +36,12 @@ StatusCode FileSourceSvc::finalize()
 
 std::optional<DAQEvent> FileSourceSvc::next()
 {
+    if (max_evn_num > 0 and evn_counter == max_evn_num)
+    {
+        return std::nullopt;
+    }
+    evn_counter++;
+
     DAQEvent event;
 
     try

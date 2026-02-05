@@ -31,11 +31,13 @@ protected:
     std::vector<uint32> readUint32(unsigned int n_word);
 
     Gaudi::Property<std::vector<std::string>> infiles { this, "inputFiles", {}, "List of data files" };
+    Gaudi::Property<size_t> max_evn_num { this, "maxEventNumber", 0, "Maximum number of events to process" };
 
     SmartIF<IIncidentSvc> m_incidentSvc;
 
     std::vector<std::string>::iterator currInput;
     FILE* in_stream;
+    size_t evn_counter;
 };
 
 } // end namespace NA64
