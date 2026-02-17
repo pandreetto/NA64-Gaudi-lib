@@ -29,6 +29,7 @@ public:
 protected:
     void handle(const Incident& incident) override {}
     std::vector<uint32> readUint32(unsigned int n_word);
+    void parse_chip_list(const std::vector<uint32>& payload, bool new_ver);
 
     Gaudi::Property<std::vector<std::string>> infiles { this, "inputFiles", {}, "List of data files" };
     Gaudi::Property<size_t> max_evn_num { this, "maxEventNumber", 0, "Maximum number of events to process" };

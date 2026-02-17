@@ -18,6 +18,21 @@ public:
     static const uint32 SUPER_EVENT_MASK = 1u<<31;
     static const uint32 ATTR_SUPER_EVENT = 68;
     static const uint32 EVENT_MAGIC_NUMBER = 0xDA1E5AFE;
+    static const uint32 EVENT_TYPE_MASK = 0x0000FFFF;
+
+    enum EventType
+    {
+      START_OF_RUN         =  1,
+      END_OF_RUN           =  2,
+      START_OF_RUN_FILES   =  3,
+      END_OF_RUN_FILES     =  4,
+      START_OF_BURST       =  5,
+      END_OF_BURST         =  6,
+      PHYSICS_EVENT        =  7,
+      CALIBRATION_EVENT    =  8,
+      END_OF_LINK          =  9,
+      EVENT_FORMAT_ERROR   = 10
+    };
 
     bool operator == (DAQEvent& evn) const;
 

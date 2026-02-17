@@ -1,5 +1,7 @@
 #include "FileSourceSvc.h"
 
+#include "SLink.h"
+
 #include <stdexcept>
 
 using namespace NA64;
@@ -34,6 +36,9 @@ StatusCode FileSourceSvc::finalize()
     return Service::finalize();
 }
 
+/* *************************************************************************
+ *
+ * ************************************************************************* */
 std::optional<DAQEvent> FileSourceSvc::next()
 {
     if (max_evn_num > 0 and evn_counter == max_evn_num)
@@ -73,6 +78,12 @@ std::optional<DAQEvent> FileSourceSvc::next()
             event.set_dead_time(wbuf2[12], wbuf2[13]);
 
             event.set_type_attribute(wbuf2[14], wbuf2[15], 0);
+
+            if (event.get_headLen() != 64)
+            {
+                // TODO remove after tests (head len is in bytes)
+                throw std::runtime_error("Critical error: header length mismatch");
+            }
         }
         else
         {
@@ -97,6 +108,12 @@ std::optional<DAQEvent> FileSourceSvc::next()
             tmpi = wbuf2[11];  // dummy: event_gdc_id
             
             event.set_time(wbuf2[12], 0);
+
+            if (event.get_headLen() != 52)
+            {
+                // TODO remove after tests (head len is in bytes)
+                throw std::runtime_error("Critical error: header length mismatch");
+            }
         }
 
         if (event.get_magic() != DAQEvent::EVENT_MAGIC_NUMBER)
@@ -109,6 +126,16 @@ std::optional<DAQEvent> FileSourceSvc::next()
             error() << "Bad event length" << endmsg;
             return std::nullopt;
         }
+
+        uint32 payload_size = (event.get_size() - event.get_headLen()) / 4;
+        auto payload = readUint32(payload_size);
+
+        uint32 mtype = event.get_type() & DAQEvent::EVENT_TYPE_MASK;
+        if (mtype == DAQEvent::PHYSICS_EVENT or mtype == DAQEvent::CALIBRATION_EVENT 
+            or mtype == DAQEvent::END_OF_BURST)
+        {
+            parse_chip_list(payload, event.new_version());
+        }
     }
     catch (std::runtime_error exc)
     {
@@ -119,6 +146,62 @@ std::optional<DAQEvent> FileSourceSvc::next()
     return event;
 }
 
+/* *************************************************************************
+ *
+ * ************************************************************************* */
+void FileSourceSvc::parse_chip_list(const std::vector<uint32>& payload, bool new_ver)
+{
+    for(int offset = 0; offset < payload.size(); )
+    {
+        uint32 s_offset = 0;
+        // Equipment section
+        if (new_ver)
+        {
+            uint32 equipSize = payload[offset];    // in bytes
+            uint32 equipType = payload[offset + 1];
+            uint32 equipID = payload[offset + 2];
+
+            s_offset = offset + 7;
+            offset += (equipSize / 4);
+        }
+        else
+        {
+            uint32 equipExtLen = (payload[offset] & 0xffff0000) >> 16;
+            uint32 equipType = payload[offset] & 0x0000ffff;
+            uint32 equipID = payload[offset + 1] & 0x0000ffff;
+            uint32 equipRawLen = payload[offset + 2];
+
+            s_offset = offset + (12 + equipExtLen) / 4;
+            offset += (12 + equipExtLen + equipRawLen) / 4;
+        }
+
+        // SLink section
+        CS::SLink slink;
+    
+        slink.SetEventSize(payload[s_offset] & 0x0000ffff);
+        slink.SetSourceID((payload[s_offset] & 0x03ff0000) >> 16);
+        slink.SetEventType((payload[s_offset] & 0x7c000000) >> 26);
+        slink.SetError((payload[s_offset] & 0x80000000) >> 31);
+        slink.SetEventNumber(payload[s_offset + 1] & 0x000fffff);
+        slink.SetSpillNumber((payload[s_offset + 1] & 0x7ff00000) >> 20);
+        slink.SetStat((payload[s_offset + 1] & 0x80000000) >> 31);
+        if (slink.IsSLinkMultiplexer())
+        {
+        }
+        else
+        {
+            slink.SetStatus(payload[s_offset + 2] & 0x000000ff);
+            slink.SetTCSError((payload[s_offset + 2] & 0x0000ff00) >> 8);
+            slink.SetErrorsCounter((payload[s_offset + 2] & 0x00ff0000) >> 16);
+            slink.SetFormat((payload[s_offset + 2] & 0xff000000) >> 24);
+            // TODO create chip
+        }
+    }
+}
+
+/* *************************************************************************
+ *
+ * ************************************************************************* */
 std::vector<uint32> FileSourceSvc::readUint32(unsigned int n_word)
 {
     unsigned int n_bytes = 4 * n_word;
